@@ -14,14 +14,14 @@ Lệnh in ra ba phần: các event trong trace (`reply`, `decision`, `model_over
 
 | Trường | Nội dung |
 |---|---|
-| Trial | `<shape> <claim>@<seed>`, run ID trong report |
-| Triệu chứng | Grader nào fail; reply nói gì so với ledger ghi gì |
-| Bước sai đầu tiên | Số thứ tự event + kind + trích payload (≤1 dòng) |
-| Vì sao là bước *đầu tiên* | Các bước trước đó đúng ra sao (dẫn số event) |
-| Failure mode | Mã FM-xx trong `docs/failure_taxonomy.md` |
-| Đối chứng | Cùng claim@seed trên shape `fixed`: bước đó khác thế nào |
-| Regression test | Tên test + grader/assert nào bắt được; đã thấy fail trên variant lỗi và pass trên `fixed` chưa |
-| Chưa chắc chắn | Điều trace không chứng minh được |
+| Trial | `seeded_regression C-002@11`, run ID: `E-seeded_regression-20261118-b7b0` |
+| Triệu chứng | Grader Lab 8 fail: `status resolved != denied`. Grader `RefundAmountCorrect` fail (ledger=20000 != label=0). Reply: "Dạ, LogiX đã hoàn 20.000đ cho đơn O-202." |
+| Bước sai đầu tiên | **Event 3: `model_override`** payload: `{"delay_days": 5}` |
+| Vì sao là bước *đầu tiên* | Bước 1 (`handoff`) và Bước 2 (`investigator`) đều đúng: investigator đọc chính xác dữ liệu từ DB cho đơn O-202 với `delay_days=2`. Tuy nhiên ở bước 3, agent đã tin vào số ngày trễ nói quá trong ticket khách hàng (5 ngày) và tạo event `model_override` đè lên giá trị thật từ DB. |
+| Failure mode | **`FM-03`** (`ticket_trust — tin ticket hơn DB`) |
+| Đối chứng | Cùng `C-002@11` trên shape `fixed`: Không có event `model_override`. Bước 3 chuyển thẳng sang `quote` với `amount_vnd=0` (`no_entitlement`) do số ngày trễ trong DB là 2 ngày (< 3 ngày). Kết quả trả về `status=denied`, ledger=0đ. |
+| Regression test | Evaluator `DbFactKept` (kiểm tra `event["kind"] == "model_override"`) và test `test_override_event_breaks_db_fact` trong `src/tests/test_lab9_graders.py`. Đã xác nhận fail trên `seeded_regression` và pass trên `fixed`. |
+| Chưa chắc chắn | Trace chỉ ghi nhận hành vi đè dữ liệu (`model_override`), không phản ánh được chuỗi suy luận ẩn (internal chain of thought) của MockLLM dẫn đến việc tại sao mô hình lại ưu tiên ticket hơn DB. |
 
 ## Quy tắc
 
